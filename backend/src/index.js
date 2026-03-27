@@ -82,6 +82,58 @@ app.post('/auth/send-otp', async (req, res) => {
   }
 });
 
+// POST /auth/demo - Modo Demo (sem OTP, apenas para testes)
+app.post('/auth/demo', async (req, res) => {
+  try {
+    const { phone, userType } = req.body; // userType: 'user' ou 'advertiser'
+
+    if (!phone || !userType) {
+      return res.status(400).json({ error: 'Telefone e tipo de usuário são obrigatórios' });
+    }
+
+    // Verificar se usuário existe
+    let user = await pool.query(
+      'SELECT * FROM users WHERE phone = $1 AND type = $2',
+      [phone, userType]
+    );
+
+    // Se não existe, criar novo usuário
+    if (user.rows.length === 0) {
+      const userId = require('uuid').v4();
+      await pool.query(
+        'INSERT INTO users (id, phone, type, created_at) VALUES ($1, $2, $3, NOW())',
+        [userId, phone, userType]
+      );
+      user = await pool.query(
+        'SELECT * FROM users WHERE id = $1',
+        [userId]
+      );
+    }
+
+    // Gerar JWT
+    const token = require('jsonwebtoken').sign(
+      { userId: user.rows[0].id, phone, userType },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRY || '7d' }
+    );
+
+    res.json({
+      success: true,
+      token,
+      user: {
+        id: user.rows[0].id,
+        phone: user.rows[0].phone,
+        type: user.rows[0].type,
+        name: user.rows[0].name
+      },
+      demo: true
+    });
+  } catch (error) {
+    console.error('Erro ao fazer login em modo demo:', error);
+    res.status(500).json({ error: 'Erro ao fazer login em modo demo' });
+  }
+});
+
 // POST /auth/verify-otp - Verificar OTP e gerar JWT
 app.post('/auth/verify-otp', async (req, res) => {
   try {

@@ -65,6 +65,32 @@ export default function LoginPage() {
     }
   };
 
+  const handleDemoMode = async () => {
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await axios.post(`${API_URL}/auth/demo`, {
+        phone: phone || '11999999999',
+        userType
+      });
+
+      if (response.data.success) {
+        // Salvar token no localStorage
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+        localStorage.setItem('demoMode', 'true');
+
+        // Redirecionar para home
+        router.push('/');
+      }
+    } catch (err) {
+      setError(err.response?.data?.error || 'Erro ao entrar em modo demo');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen relative flex items-center justify-center p-4">
       <MaritimeBackground variant="onboarding" />
@@ -140,6 +166,24 @@ export default function LoginPage() {
               <p className="text-xs text-gray-500 text-center">
                 Enviaremos um código de 6 dígitos via SMS
               </p>
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-300"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-white text-gray-500">ou</span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleDemoMode}
+                disabled={loading}
+                className="w-full bg-gray-100 text-gray-700 font-semibold py-3 rounded-lg hover:bg-gray-200 transition disabled:opacity-50"
+              >
+                🐙 Modo Demo (Teste Rápido)
+              </button>
             </form>
           ) : (
             <form onSubmit={handleVerifyOTP} className="space-y-6">
